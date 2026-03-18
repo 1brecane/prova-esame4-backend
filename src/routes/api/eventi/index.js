@@ -9,10 +9,20 @@ async function eventiRoutes(fastify) {
             onRequest: [fastify.authenticate],
         },
         async (request, reply) => {
+            const utenteId = request.user.utenteId;
             const eventi = await db.query(
-                "SELECT EventoID, Titolo, Data, Descrizione FROM Eventi ORDER BY Data ASC",
+                `
+                SELECT e.EventoID, e.Titolo, e.Data, e.Descrizione,
+                       (SELECT COUNT(*) FROM Iscrizioni i WHERE i.EventoID = e.EventoID AND i.UtenteID = ?) as Iscritto
+                FROM Eventi e 
+                ORDER BY e.Data ASC
+                `,
+                [utenteId]
             );
-            return eventi;
+            return eventi.map(e => ({
+                ...e,
+                Iscritto: e.Iscritto > 0
+            }));
         },
     );
 

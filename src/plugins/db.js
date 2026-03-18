@@ -65,9 +65,9 @@ async function seedData(connection) {
     // Seed Eventi
     await connection.execute(`
         INSERT INTO Eventi (Titolo, Data, Descrizione) VALUES 
-        ('Conferenza Annuale 2025', '2025-04-15', 'Conferenza aziendale con keynote e workshop'),
-        ('Team Building', '2025-05-20', 'Giornata di attività di gruppo'),
-        ('Webinar Tecnologico', '2025-06-10', 'Presentazione delle nuove tecnologie')
+        ('Conferenza Annuale 2025', '2026-04-15', 'Conferenza aziendale con keynote e workshop'),
+        ('Team Building', '2026-05-20', 'Giornata di attività di gruppo'),
+        ('Webinar Tecnologico', '2026-06-10', 'Presentazione delle nuove tecnologie')
     `);
 }
 
