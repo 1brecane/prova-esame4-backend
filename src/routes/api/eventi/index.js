@@ -135,6 +135,45 @@ async function eventiRoutes(fastify) {
             return { message: "Evento eliminato con successo" };
         },
     );
+
+    // Elenco iscrizioni per un evento specifico (solo organizzatori)
+    fastify.get(
+        "/:id/iscrizioni",
+        {
+            schema: {
+                tags: ["Eventi", "Iscrizioni"],
+                params: {
+                    type: "object",
+                    properties: {
+                        id: { type: "integer" },
+                    },
+                },
+            },
+            onRequest: [fastify.authenticate, fastify.authorizeOrganizzatore],
+        },
+        async (request, reply) => {
+            const { id } = request.params;
+
+            // Controlla se l'evento esiste
+            const eventi = await db.query("SELECT EventoID FROM Eventi WHERE EventoID = ?", [id]);
+            if (eventi.length === 0) {
+                return reply.code(404).send({ error: "Evento non trovato" });
+            }
+
+            const iscrizioni = await db.query(
+                `
+                SELECT i.IscrizioneID, i.CheckinEffettuato, i.OraCheckin, u.UtenteID, u.Nome, u.Cognome, u.Email
+                FROM Iscrizioni i
+                JOIN Utenti u ON i.UtenteID = u.UtenteID
+                WHERE i.EventoID = ?
+                ORDER BY u.Cognome ASC, u.Nome ASC
+                `,
+                [id]
+            );
+
+            return iscrizioni;
+        },
+    );
 }
 
 export default eventiRoutes;

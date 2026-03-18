@@ -31,7 +31,6 @@ async function generate() {
 					description: "API documentation generated from Fastify route schemas",
 					version: process.env.npm_package_version || "0.0.1",
 				},
-				servers: [{ url: "http://localhost:3000" }],
                 components: {
                     securitySchemes: {
                         bearerAuth: {
