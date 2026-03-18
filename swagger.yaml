@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: Backend prova esame - Gestione delle iscrizioni e check-in per formazione
+    aziendale
+  description: API documentation generated from Fastify route schemas
+  version: 0.0.1
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas: {}
+paths:
+  /api/eventi/:
+    get:
+      tags:
+        - Eventi
+      responses:
+        "200":
+          description: Default Response
+    post:
+      tags:
+        - Eventi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Titolo
+                - Data
+              properties:
+                Titolo:
+                  type: string
+                  minLength: 1
+                Data:
+                  type: string
+                  format: date
+                Descrizione:
+                  type: string
+      responses:
+        "200":
+          description: Default Response
+  /api/eventi/{id}:
+    put:
+      tags:
+        - Eventi
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Titolo
+                - Data
+              properties:
+                Titolo:
+                  type: string
+                  minLength: 1
+                Data:
+                  type: string
+                  format: date
+                Descrizione:
+                  type: string
+      parameters:
+        - schema:
+            type: integer
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+    delete:
+      tags:
+        - Eventi
+      parameters:
+        - schema:
+            type: integer
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/iscrizioni/:
+    get:
+      tags:
+        - Iscrizioni
+      responses:
+        "200":
+          description: Default Response
+    post:
+      tags:
+        - Iscrizioni
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - EventoID
+              properties:
+                EventoID:
+                  type: integer
+      responses:
+        "200":
+          description: Default Response
+  /api/iscrizioni/{id}:
+    delete:
+      tags:
+        - Iscrizioni
+      parameters:
+        - schema:
+            type: integer
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/iscrizioni/{id}/checkin:
+    post:
+      tags:
+        - Iscrizioni
+      parameters:
+        - schema:
+            type: integer
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /api/utenti/register:
+    post:
+      tags:
+        - Utenti
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Nome
+                - Cognome
+                - Email
+                - Password
+              properties:
+                Nome:
+                  type: string
+                  minLength: 1
+                Cognome:
+                  type: string
+                  minLength: 1
+                Email:
+                  type: string
+                  format: email
+                Password:
+                  type: string
+                  minLength: 6
+      responses:
+        "200":
+          description: Default Response
+  /api/utenti/login:
+    post:
+      tags:
+        - Utenti
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Email
+                - Password
+              properties:
+                Email:
+                  type: string
+                  format: email
+                Password:
+                  type: string
+      responses:
+        "200":
+          description: Default Response
+servers:
+  - url: http://localhost:3000
+security:
+  - bearerAuth: []

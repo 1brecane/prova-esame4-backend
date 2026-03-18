@@ -6,6 +6,57 @@ const PASSWORD_MIN_LENGTH = 6;
 async function utentiRoutes(fastify) {
     const db = fastify.db;
 
+    // Registrazione (API pubblica)
+    fastify.post(
+        "/register",
+        {
+            schema: {
+                tags: ["Utenti"],
+                body: {
+                    type: "object",
+                    required: ["Nome", "Cognome", "Email", "Password"],
+                    properties: {
+                        Nome: { type: "string", minLength: 1 },
+                        Cognome: { type: "string", minLength: 1 },
+                        Email: { type: "string", format: "email" },
+                        Password: { type: "string", minLength: PASSWORD_MIN_LENGTH },
+                    },
+                },
+            },
+        },
+        async (request, reply) => {
+            const { Nome, Cognome, Email, Password } = request.body;
+
+            // Controlla se la mail è già registrata
+            const existing = await db.query(
+                "SELECT UtenteID FROM Utenti WHERE Email = ?",
+                [Email],
+            );
+            if (existing.length > 0) {
+                return reply.code(409).send({ error: "Email già registrata" });
+            }
+
+            const passwordHash = await bcrypt.hash(Password, 10);
+            
+            // Di default registriamo come Dipendente
+            const result = await db.execute(
+                `
+                INSERT INTO Utenti (Nome, Cognome, Email, Password, Ruolo)
+                VALUES (?, ?, ?, ?, 'Dipendente')
+                `,
+                [Nome, Cognome, Email, passwordHash],
+            );
+
+            return reply.code(201).send({
+                UtenteID: result.insertId,
+                Nome,
+                Cognome,
+                Email,
+                Ruolo: 'Dipendente'
+            });
+        },
+    );
+
     // Login (API pubblica)
     fastify.post(
         "/login",
@@ -23,16 +74,10 @@ async function utentiRoutes(fastify) {
             },
         },
         async (request, reply) => {
-            const { Email, Password } = request.body || {};
-
-            if (!Email || !Password) {
-                return reply
-                    .code(400)
-                    .send({ error: "Email e Password sono obbligatorie" });
-            }
+            const { Email, Password } = request.body;
 
             const rows = await db.query(
-                "SELECT UtenteID, Email, Password, Admin FROM Utenti WHERE Email = ?",
+                "SELECT UtenteID, Nome, Cognome, Email, Password, Ruolo FROM Utenti WHERE Email = ?",
                 [Email],
             );
             const user = rows[0];
@@ -56,203 +101,12 @@ async function utentiRoutes(fastify) {
                 token,
                 utente: {
                     UtenteID: user.UtenteID,
+                    Nome: user.Nome,
+                    Cognome: user.Cognome,
                     Email: user.Email,
-                    Admin: !!user.Admin,
+                    Ruolo: user.Ruolo,
                 },
             });
-        },
-    );
-
-    // --- Gestione solo amministratore ---
-
-    // Lista degli utenti
-    fastify.get(
-        "/",
-        {
-            schema: { tags: ["Utenti"] },
-            onRequest: [fastify.authenticate, fastify.authorizeAdmin],
-        },
-        async (request, reply) => {
-            const users = await db.query(
-                "SELECT UtenteID, Email, Admin FROM Utenti",
-            );
-            return users;
-        },
-    );
-
-    // Crea nuovo utente
-    fastify.post(
-        "/",
-        {
-            schema: {
-                tags: ["Utenti"],
-                body: {
-                    type: "object",
-                    required: ["Email", "Password"],
-                    properties: {
-                        Email: { type: "string", format: "email" },
-                        Password: { type: "string", minLength: 6 },
-                        Admin: { type: "boolean" },
-                    },
-                },
-            },
-            onRequest: [fastify.authenticate, fastify.authorizeAdmin],
-        },
-        async (request, reply) => {
-            const { Email, Password, Admin } = request.body || {};
-
-            // Validazione email e password
-            if (!Email || !Password) {
-                return reply.code(400).send({
-                    error: "Email e Password sono obbligatori",
-                });
-            }
-            // Validazione lunghezza password
-            if (Password.length < PASSWORD_MIN_LENGTH) {
-                return reply.code(400).send({
-                    error: `Password troppo corta (min ${PASSWORD_MIN_LENGTH})`,
-                });
-            }
-            // Validazione formato email
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(Email)) {
-                return reply
-                    .code(400)
-                    .send({ error: "Formato email non valido" });
-            }
-
-            const isAdmin = Admin === true;
-
-            // Controlla se la mail è già registrata
-            const existing = await db.query(
-                "SELECT UtenteID FROM Utenti WHERE Email = ?",
-                [Email],
-            );
-            if (existing.length > 0) {
-                return reply.code(409).send({ error: "Email già registrata" });
-            }
-
-            const password = await bcrypt.hash(Password, 10);
-
-            const result = await db.query(
-                `
-            INSERT INTO Utenti (Email, Password, Admin)
-            VALUES (?, ?, ?)
-        `,
-                [Email, password, isAdmin],
-            );
-
-            return reply.code(201).send({
-                UtenteID: result.insertId,
-                Email,
-                Admin: isAdmin,
-            });
-        },
-    );
-
-    // Aggiorna utente
-    fastify.put(
-        "/:id",
-        {
-            schema: {
-                tags: ["Utenti"],
-                params: {
-                    type: "object",
-                    properties: {
-                        id: { type: "integer" },
-                    },
-                },
-                body: {
-                    type: "object",
-                    required: ["Email"],
-                    properties: {
-                        Email: { type: "string", format: "email" },
-                        Password: { type: "string", minLength: 6 },
-                        Admin: { type: "boolean" },
-                    },
-                },
-            },
-            onRequest: [fastify.authenticate, fastify.authorizeAdmin],
-        },
-        async (request, reply) => {
-            const { id } = request.params;
-            const { Email, Password, Admin } = request.body || {};
-
-            // Validazione email
-            if (!Email) {
-                return reply.code(400).send({
-                    error: "Campo email obbligatorio",
-                });
-            }
-
-            const password = Password;
-            // Validazione lunghezza password
-            if (password) {
-                if (password.length < PASSWORD_MIN_LENGTH) {
-                    return reply.code(400).send({
-                        error: `Password troppo corta (min ${PASSWORD_MIN_LENGTH})`,
-                    });
-                }
-            }
-
-            // Validazione formato email
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(Email)) {
-                return reply
-                    .code(400)
-                    .send({ error: "Formato email non valido" });
-            }
-
-            const isAdmin = Admin === true;
-
-            // Controlla se la mail è già registrata
-            const existing = await db.query(
-                "SELECT UtenteID FROM Utenti WHERE Email = ? AND UtenteID != ?",
-                [Email, id],
-            );
-            if (existing.length > 0) {
-                return reply.code(409).send({ error: "Email già registrata" });
-            }
-
-            let sql = "UPDATE Utenti SET Email = ?, Admin = ?";
-            const params = [Email, isAdmin];
-
-            if (password) {
-                sql += ", Password = ?";
-                params.push(password);
-            }
-
-            sql += " WHERE UtenteID = ?";
-            params.push(id);
-
-            const result = await db.execute(sql, params);
-
-            if (result.affectedRows === 0) {
-                return reply.code(404).send({ error: "Utente non trovato" });
-            }
-
-            return { message: "Utente aggiornato" };
-        },
-    );
-
-    // Elimina utente
-    fastify.delete(
-        "/:id",
-        {
-            schema: { tags: ["Utenti"] },
-            onRequest: [fastify.authenticate, fastify.authorizeAdmin],
-        },
-        async (request, reply) => {
-            const { id } = request.params;
-
-            const result = await db.execute(
-                "DELETE FROM Utenti WHERE UtenteID = ?",
-                [id],
-            );
-
-            if (result.affectedRows === 0) {
-                return reply.code(404).send({ error: "Utente non trovato" });
-            }
-
-            return { message: "Utente eliminato" };
         },
     );
 }

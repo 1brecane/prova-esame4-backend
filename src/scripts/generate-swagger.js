@@ -21,7 +21,8 @@ async function generate() {
         });
         
         fastify.decorate("authenticate", async (req, reply) => {});
-        fastify.decorate("authorizeAdmin", async (req, reply) => {});
+        fastify.decorate("authorizeOrganizzatore", async (req, reply) => {});
+        fastify.decorate("authorizeDipendente", async (req, reply) => {});
 
 		await fastify.register(fastifySwagger, {
 			openapi: {
